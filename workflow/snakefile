@@ -1,0 +1,293 @@
+import sys
+from itertools import product
+
+panmanutils_path = "~/installs/panman/build/panmanUtils"
+swampy_path = "~/installs/SWAMPy/src/simulate_metagenome.py"
+panmap_path = "~/installs/panmap/build/bin/panmap"
+
+configfile: "config.yaml"
+resources_path = os.path.join(workflow.basedir, "../resources")
+
+# Swampy simulator can only be run with sars input panman
+# Ensure tree and simulator are lists for easier handling
+trees = config['tree'] if isinstance(config['tree'], list) else [config['tree']]
+simulators = config['simulator'] if isinstance(config['simulator'], list) else [config['simulator']]
+if 'swampy' in simulators:
+    if trees != ["sars"]:
+        print("ConfigError: SWAMPY read simulator must be run with SARS data only")
+        sys.exit(1)
+
+# Number of replicates from config
+reps = [f"rep{i + 1}" for i in range(config['n_replicates'])]
+
+# Map abundance lists to simplified wildcards for filenames
+def map_abundance_wildcards(abundances):
+    length_count = {}
+    abundance_mapping = {}
+
+    for abundance in abundances:
+        length = len(abundance)
+        if length in length_count:
+            # Add suffix for additional items of the same length
+            suffix = chr(97 + length_count[length])  # 'a', 'b', etc.
+            unique_name = f"{length}hap-{suffix}"
+            length_count[length] += 1
+        else:
+            # Start with 'a' for the first item of this length
+            unique_name = f"{length}hap-a"
+            length_count[length] = 1
+        abundance_mapping[unique_name] = abundance
+
+    return abundance_mapping
+
+abundance_wildcards = map_abundance_wildcards(config["abundances"])
+
+# Map combinations of panmap parameters to simplified wildcards for filenames
+def generate_panmap_param_wildcards(config):
+    # Extract and expand lists from config file, mapping each key to values.
+    param_keys = list(config['panmap_params'].keys())
+    param_values = [config['panmap_params'][key] if isinstance(config['panmap_params'][key], list) else [config['panmap_params'][key]] for key in param_keys]
+    
+    # Generate all combinations of the panmap_params.
+    param_combinations = list(product(*param_values))
+    
+    # Map each combination to a unique wildcard name
+    wildcard_map = {f"panmap{i+1}": dict(zip(param_keys, combination)) for i, combination in enumerate(param_combinations)}
+    
+    return wildcard_map
+
+panmap_params_wildcards = generate_panmap_param_wildcards(config)
+
+# Calculate n_reads given a sequencing depth (in silico seq only)
+def get_n_reads(config, tree, config_n_reads):
+    
+    if config['iss_params'].get('use_depth') is True:
+        depth = config_n_reads
+        
+        # Set read length based on model
+        if config['iss_params'].get('model') == "miseq":
+            read_length = 301
+        elif config['iss_params'].get('model') == "hiseq":
+            read_length = 126
+        elif config['iss_params'].get('model') == "novaseq":
+            read_length = 150
+
+        # Get average genome length
+        length_file = f"{resources_path}/fasta_all/{tree}_length.txt"
+
+        # Defer function if genome length file needs to be created
+        if not os.path.exists(length_file):
+            return None
+
+        with open(length_file, 'r') as file:
+            avg_genome_length = int(file.read().strip())
+    
+        # Calculate n_reads based on depth
+        calc_n_reads = round((int(depth) * avg_genome_length) / (2 * read_length))
+        return calc_n_reads
+    
+    else:
+        return config_n_reads
+
+# Existing panmans available online
+urls = {
+    "ecoli": "https://zenodo.org/records/12630607/files/ecoli_1000.panman", 
+    "hiv": "https://zenodo.org/records/12630607/files/HIV_20000.panman",
+    "klebs": "https://zenodo.org/records/12630607/files/klebs_1000.panman",
+    "rsv": "https://zenodo.org/records/12630607/files/rsv_4000.panman",
+    "sars": "https://zenodo.org/records/12630607/files/sars_20000.panman",
+    "tb": "https://zenodo.org/records/12630607/files/tb_400.panman"}
+
+rule all:
+    input:
+        expand("panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv", 
+        tree_name=config['tree'], 
+        num_sequences=abundance_wildcards.keys(),
+        simulator=config['simulator'],
+        n_reads=config['n_reads'],
+        panmap_params=panmap_params_wildcards.keys(),
+        i=reps),
+
+        expand("panman_outputs/{tree_name}_{num_sequences}_abundance_{i}.tsv", 
+        tree_name=config['tree'], 
+        num_sequences=abundance_wildcards.keys(),
+        i=reps),
+
+        "results/parameter.log",
+        "results/actual_abundance.tsv",
+        "results/estimated_abundance.tsv",
+        "results/results_summary.tsv",
+        "results/results_boxplot.tsv"
+
+rule log_wildcard_mapping:
+    output:
+        "results/parameter.log"
+    params:
+        abundance_wildcards=abundance_wildcards,
+        panmap_params_wildcards=panmap_params_wildcards
+    shell:
+        """
+        echo "Haplotype Abundances:\n{params.abundance_wildcards}\n" >> {output}
+        echo "Panmap Parameters:\n{params.panmap_params_wildcards}\n" >> {output}
+        """
+
+rule download_panman:
+    output: 
+        f"{resources_path}/panmans/{{tree_name}}.panman"
+    params:
+        url = lambda wildcards: urls[wildcards.tree_name]
+    shell:
+        "wget {params.url} -O {output}"
+
+rule create_fasta:
+    input: 
+        f"{resources_path}/panmans/{{tree_name}}.panman"
+    output:
+        f"{resources_path}/fasta_all/{{tree_name}}_all.fasta"
+    shell:
+        """
+        echo "Creating fasta from panman..."
+        {panmanutils_path} -I {input} --fasta --output-file={wildcards.tree_name} 
+        mv info/{wildcards.tree_name}_0.fasta {output}
+        """
+
+rule sequence_length:
+    input:
+        f"{resources_path}/fasta_all/{{tree_name}}_all.fasta"
+    output:
+        f"{resources_path}/fasta_all/{{tree_name}}_length.txt"
+    conda:
+        "envs/bio.yaml"
+    script:
+        "scripts/genome_length.py"
+
+rule select_sequences:
+    input: 
+        f"{resources_path}/fasta_all/{{tree_name}}_all.fasta",
+        f"{resources_path}/fasta_all/{{tree_name}}_length.txt"
+    output: 
+        "panman_outputs/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta"
+    conda:
+        "envs/bio.yaml"
+    params:
+        hap_count=lambda wildcards: len(abundance_wildcards[wildcards.num_sequences])
+    script:
+        "scripts/select_sequences.py"
+
+rule create_abundance_tsv:
+    input:
+        "panman_outputs/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta"
+    output:
+        "panman_outputs/{tree_name}_{num_sequences}_abundance_{i}.tsv",
+        "simulation_inputs/{tree_name}_{num_sequences}_abundance_{i}.tsv",
+    conda:
+        "envs/bio.yaml"
+    params:
+        hap_count=lambda wildcards: len(abundance_wildcards[wildcards.num_sequences]),
+        abundance=lambda wildcards: abundance_wildcards[wildcards.num_sequences]
+    script:
+        "scripts/abundance_tsv.py"
+
+
+rule simulate_swampy:
+    input:
+        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{tree_name}_{num_sequences}_abundance_{i}.tsv"
+    output:
+        "swampy_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
+        "swampy_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
+    conda:
+        "envs/SWAMPy.yaml"
+    shell:
+        """
+        python {swampy_path} \
+        --primer_set {config[swampy_params][primer_set]} \
+        --genomes_file {input[0]} \
+        --genome_abundances {input[1]} \
+        --output_folder ./swampy_outputs/ \
+        --output_filename_prefix {wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i} \
+        --n_reads {config[n_reads]} \
+        --temp_folder ./swampy_outputs/temp_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i}/ --autoremove
+        """
+
+rule simulate_insilicoseq:
+    input:
+        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{tree_name}_{num_sequences}_abundance_{i}.tsv"
+    output:
+        "iss_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
+        "iss_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
+    conda:
+        "envs/iss.yaml"
+    params:
+        n_reads=lambda wildcards: get_n_reads(config, wildcards.tree_name, wildcards.n_reads)
+    shell:
+        """
+        iss generate -g {input[0]} \
+        --abundance_file {input[1]} \
+        --model {config[iss_params][model]} \
+        --n_reads {params.n_reads} \
+        --cpus {config[iss_params][cpus]} \
+        --output ./iss_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i}
+        mkdir -p results
+        touch results/parameter.log
+        log_title="Number of Reads vs Depth:"
+        log_message="{wildcards.n_reads} reads or depth was configured for {wildcards.tree_name} tree and ISS {config[iss_params][model]} model. \
+        This was passed to In Silico Seq as {params.n_reads} reads."
+        if ! grep -Fxq "$log_title" results/parameter.log; then
+            echo "$log_title" >> results/parameter.log
+        fi
+        if ! grep -Fxq "$log_message" results/parameter.log; then
+            echo "$log_message" >> results/parameter.log
+        fi
+        """
+
+rule run_panmap:
+    input:
+        f"{resources_path}/panmans/{{tree_name}}.panman",
+        "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
+        "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
+    output:
+        "panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv"
+    params:
+        panmap_config = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params]
+    shell:
+        """
+        {panmap_path} \
+        {input[0]} \
+        {input[1]} \
+        {input[2]} \
+        -p ./panmap_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i} \
+        -k {params.panmap_config[len_k_mer]} \
+        -s {params.panmap_config[len_s_mer]} \
+        --place-per-read \
+        --check-frequency {params.panmap_config[check_frequency]} \
+        --redo-read-threshold {params.panmap_config[redo_read_threshold]} \
+        --remove-iteration {params.panmap_config[remove_iteration]} \
+        --cpus {params.panmap_config[cpus]}
+        mv ./panmap_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i}.abundance {output[0]}
+        """
+
+rule tabular_summary:
+    input:
+        expand("panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv", 
+        tree_name=config['tree'], 
+        num_sequences=abundance_wildcards.keys(),
+        simulator=config['simulator'],
+        n_reads=config['n_reads'],
+        panmap_params=panmap_params_wildcards.keys(),
+        i=reps),
+
+        expand("panman_outputs/{tree_name}_{num_sequences}_abundance_{i}.tsv", 
+        tree_name=config['tree'], 
+        num_sequences=abundance_wildcards.keys(),
+        i=reps)
+    output:
+        "results/actual_abundance.tsv",
+        "results/estimated_abundance.tsv",
+        "results/results_summary.tsv",
+        "results/results_boxplot.tsv"
+    script:
+        "scripts/summarize_output.py"

@@ -1,0 +1,8 @@
+.snakemake/
+bash/
+info/
+results/
+resources/
+workflow/envs/conda/
+
+*.png
