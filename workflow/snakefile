@@ -8,13 +8,19 @@ panmap_path = "~/installs/panmap/build/bin/panmap"
 configfile: "config.yaml"
 resources_path = os.path.join(workflow.basedir, "../resources")
 
-# Swampy simulator can only be run with sars input panman
 # Ensure tree and simulator are lists for easier handling
 trees = config['tree'] if isinstance(config['tree'], list) else [config['tree']]
+# Swampy simulator can only be run with sars input panman
 simulators = config['simulator'] if isinstance(config['simulator'], list) else [config['simulator']]
 if 'swampy' in simulators:
     if trees != ["sars"]:
         print("ConfigError: SWAMPY read simulator must be run with SARS data only")
+        sys.exit(1)
+
+# Additional check: Ensure 'tree' values do not contain underscores
+for tree in trees:
+    if "_" in tree:
+        print(f"ConfigError: Tree name '{tree}' cannot contain underscores")
         sys.exit(1)
 
 # Number of replicates from config

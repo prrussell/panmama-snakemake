@@ -1,7 +1,9 @@
 # Number of replicates (i.e., random selection of sequences) for each condition
 n_replicates: 2   # Integer
 
-# Specify existing panman (sars, ecoli, hiv, tb, rsv, or klebs)
+# Specify existing panman
+# Use published panman: sars, ecoli, hiv, tb, rsv, or klebs)
+# Or use file prefix for any panman saved in resources folder in pipeline directory
 tree: "rsv"   # String or list of strings
 
 # Haplotype relative abundance (list; must sum to 1)
