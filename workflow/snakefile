@@ -119,6 +119,10 @@ rule all:
         num_sequences=abundance_wildcards.keys(),
         i=reps),
 
+        expand("panmap_outputs/{panmap_params}_panman/{tree_name}.panman",
+        panmap_params=panmap_params_wildcards.keys(),
+        tree_name=config['tree']),
+
         "results/parameter.log",
         "results/actual_abundance.tsv",
         "results/estimated_abundance.tsv",
@@ -157,6 +161,7 @@ rule create_fasta:
         mv info/{wildcards.tree_name}_0.fasta {output}
         """
 
+# Calculate genome size for depth <-> reads conversions
 rule sequence_length:
     input:
         f"{resources_path}/fasta_all/{{tree_name}}_all.fasta"
@@ -250,13 +255,22 @@ rule simulate_insilicoseq:
         fi
         """
 
+# Force panman reindexing for each set of panmap parameters (i.e., possible variations of k-mer/s-mer length)
+rule copy_panman:
+    input:
+        f"{resources_path}/panmans/{{tree_name}}.panman"
+    output:
+        "panmap_outputs/{panmap_params}_panman/{tree_name}.panman"
+    shell:
+        "cp {input[0]} {output[0]}"
+
 rule run_panmap:
     input:
-        f"{resources_path}/panmans/{{tree_name}}.panman",
+        "panmap_outputs/{panmap_params}_panman/{tree_name}.panman",
         "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
         "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
     output:
-        "panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv"
+        "panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv",
     params:
         panmap_config = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params]
     shell:

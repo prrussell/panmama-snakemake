@@ -3,6 +3,7 @@ bash/
 info/
 results/
 resources/
+plots/
 workflow/envs/conda/
 
 *.png
