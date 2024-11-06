@@ -1,10 +1,6 @@
 import sys
 from itertools import product
 
-panmanutils_path = "~/installs/panman/build/panmanUtils"
-swampy_path = "~/installs/SWAMPy/src/simulate_metagenome.py"
-panmap_path = "~/installs/panmap/build/bin/panmap"
-
 configfile: "config.yaml"
 resources_path = os.path.join(workflow.basedir, "../resources")
 
@@ -23,7 +19,7 @@ for tree in trees:
         print(f"ConfigError: Tree name '{tree}' cannot contain underscores")
         sys.exit(1)
 
-# Number of replicates from config
+# Get number of replicates from config
 reps = [f"rep{i + 1}" for i in range(config['n_replicates'])]
 
 # Map abundance lists to simplified wildcards for filenames
@@ -157,7 +153,7 @@ rule create_fasta:
     shell:
         """
         echo "Creating fasta from panman..."
-        {panmanutils_path} -I {input} --fasta --output-file={wildcards.tree_name} 
+        {config[panmanUtils_path]} -I {input} --fasta --output-file={wildcards.tree_name} 
         mv info/{wildcards.tree_name}_0.fasta {output}
         """
 
@@ -213,7 +209,7 @@ rule simulate_swampy:
         "envs/SWAMPy.yaml"
     shell:
         """
-        python {swampy_path} \
+        python {config[swampy_path]} \
         --primer_set {config[swampy_params][primer_set]} \
         --genomes_file {input[0]} \
         --genome_abundances {input[1]} \
@@ -275,7 +271,7 @@ rule run_panmap:
         panmap_config = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params]
     shell:
         """
-        {panmap_path} \
+        {config[panmap_path]} \
         {input[0]} \
         {input[1]} \
         {input[2]} \
@@ -289,6 +285,7 @@ rule run_panmap:
         --cpus {params.panmap_config[cpus]}
         mv ./panmap_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i}.abundance {output[0]}
         """
+#       --cpus argument buggy, remove if needed. Sometimes causes error: Segmentation fault      (core dumped)
 
 rule tabular_summary:
     input:

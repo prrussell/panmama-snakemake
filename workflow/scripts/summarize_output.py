@@ -65,8 +65,6 @@ params_df = panmap_summary_df[
     ["Tree", "Num_Haplotypes_Param", "Num_Haplotypes", "Read_Simulator", "Reads_or_Depth", "Panmap_Params", "Replicate"]
 ].drop_duplicates().reset_index(drop=True)
 
-print(params_df)
-
 # Expand true haplotype df to include all pipeline parameter conditions
 panman_expanded_df = pd.merge(
     params_df,

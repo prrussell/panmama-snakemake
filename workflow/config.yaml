@@ -1,3 +1,7 @@
+panmanUtils_path: "~/installs/panmap/build/bin/panmanUtils"
+panmap_path: "~/installs/panmap/build/bin/panmap"
+swampy_path: "~/installs/SWAMPy/src/simulate_metagenome.py"
+
 # Number of replicates (i.e., random selection of sequences) for each condition
 n_replicates: 2   # Integer
 
@@ -9,10 +13,9 @@ tree: "rsv"   # String or list of strings
 # Haplotype relative abundance (list; must sum to 1)
 abundances:
   - [.5, .25, .25]  # One or multiple lists
-  - [1]
 
 # Select read simulator (iss, swampy)
-simulator: ["iss", "swampy"]  # String or list of strings
+simulator: "iss"  # String or list of strings
 n_reads: 1000   # Integer or list of integers
 
 iss_params:
@@ -26,7 +29,7 @@ swampy_params:
   primer_set: "a5"  # String
 
 panmap_params:  # Integer or list of integers for all panmap parameters
-  len_k_mer: 10
+  len_k_mer: [10, 15]
   len_s_mer: 5
   check_frequency: 5
   redo_read_threshold: 0
