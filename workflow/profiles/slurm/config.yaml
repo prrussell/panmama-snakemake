@@ -12,9 +12,13 @@ default-resources:
   slurm_partition: "short"  # Assigns jobs to the "short" partition, typically used for jobs with shorter runtimes
   runtime: 10  # Sets the maximum runtime to 10 minutes for each job to ensure jobs complete within an acceptable time frame. This can be adjusted based on the specific requirements of the workflow
 
-# Example for a specific rule, set-resources
-# set-resources:
-#     bwa_mem: #overwrite default resources for bwa mem rule.
-#         mem_mb: 32000
-#         slurm_partition: "medium"
-#         runtime: 120
+# Config for specific rules
+set-resources:
+    create_fasta:
+        mem_mb: attempt * 500000
+        slurm_partition: "short"
+        runtime: 10
+    run_panmap:
+        mem_mb: attempt * 500000
+        slurm_partition: "medium"
+        runtime: 60
