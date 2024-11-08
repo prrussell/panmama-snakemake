@@ -285,7 +285,6 @@ rule run_panmap:
         --cpus {params.panmap_config[cpus]}
         mv ./panmap_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i}.abundance {output[0]}
         """
-#       --cpus argument buggy, remove if needed. Sometimes causes error: Segmentation fault      (core dumped)
 
 rule tabular_summary:
     input:
