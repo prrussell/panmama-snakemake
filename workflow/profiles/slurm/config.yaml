@@ -10,14 +10,14 @@ max-status-checks-per-second: 5  # Limits the rate of status checks to 5 per sec
 default-resources:
   mem_mb: attempt * 16000  # Allocates 16GB of memory per attempt, scaling with the number of attempts to ensure sufficient resources are available
   slurm_partition: "short"  # Assigns jobs to the "short" partition, typically used for jobs with shorter runtimes
-  runtime: 10  # Sets the maximum runtime to 10 minutes for each job to ensure jobs complete within an acceptable time frame. This can be adjusted based on the specific requirements of the workflow
+  runtime: 30  # Sets the maximum runtime to 30 minutes for each job to ensure jobs complete within an acceptable time frame. This can be adjusted based on the specific requirements of the workflow
 
 # Config for specific rules
 set-resources:
     create_fasta:
         mem_mb: attempt * 500000
-        slurm_partition: "short"
-        runtime: 10
+        slurm_partition: "medium"
+        runtime: 60
     run_panmap:
         mem_mb: attempt * 500000
         slurm_partition: "medium"
