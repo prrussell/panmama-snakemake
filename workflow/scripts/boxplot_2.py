@@ -6,7 +6,7 @@ import argparse
 import os
 
 # Set up argparse to take input and output file paths as command-line arguments
-parser = argparse.ArgumentParser(description="Plot estimated vs actual abundance by haplotype.")
+parser = argparse.ArgumentParser(description="Plot estimated vs actual abundance by grouped haplotypes.")
 parser.add_argument('input_file_path', type=str, help='Path to the input TSV file')
 parser.add_argument('output_directory', type=str, help='Directory to save the output plots')
 args = parser.parse_args()
@@ -29,52 +29,77 @@ for col in required_columns:
 # Ensure output directory exists
 os.makedirs(args.output_directory, exist_ok=True)
 
+# Helper function to sort haplotype indices with "other" last
+def custom_sort_key(value):
+    try:
+        # Try to convert to integer if possible
+        return (0, int(value))
+    except ValueError:
+        # Place "other" after numeric values
+        return (1, value)
+
 # Loop through each unique value in the specified loop column
 for group_value in data[loop_column_name].unique():
     # Filter the data for the current group
     subset_data = data[data[loop_column_name] == group_value]
 
+    # Group data by actual abundance, sorting by abundance in descending order
+    grouped_data = subset_data.groupby(actual_abundance_column_name, sort=False)
+    sorted_abundances = sorted(grouped_data, key=lambda x: -x[0])  # Sort by actual abundance descending
+
+    # Prepare data for plotting by assigning each actual abundance to a unique x position
+    plot_data = []
+    x_labels = []  # Store custom labels for each x-tick
+    x_positions = {}  # Track x positions for each unique actual abundance
+    for i, (abundance, group) in enumerate(sorted_abundances):
+        x_positions[abundance] = i
+        group["x_position"] = i
+        plot_data.append(group)
+
+        # Sort haplotype indices with custom sort, placing "other" last
+        haplotypes = sorted(group[haplotype_column_name].unique(), key=custom_sort_key)
+        
+        # Create x-tick label based on haplotype indices, now sorted
+        if len(haplotypes) > 1:
+            x_labels.append(f"{haplotypes[0]}-{haplotypes[-1]}")
+        else:
+            x_labels.append(str(haplotypes[0]))
+
+    plot_data = pd.concat(plot_data)
+
     # Set up the plot
     plt.figure(figsize=(12, 8))
-
-    # Overlay with box plots for estimated abundances
     ax = sns.boxplot(
-        x=subset_data[haplotype_column_name],
-        y=subset_data[estimated_abundance_column_name],
-        hue=subset_data[grouping_column_name],
+        x=plot_data["x_position"],
+        y=plot_data[estimated_abundance_column_name],
+        hue=plot_data[grouping_column_name],
         palette='Pastel1',
         dodge=True
     )
+
+    # Apply jitter to both x and y positions for box plots
     for artist in ax.lines:
         if artist.get_linestyle() == "None":
             x_pos = artist.get_xdata()
             y_pos = artist.get_ydata()
-
-            # Add jitter to both x and y positions
+            # Add jitter
             artist.set_xdata(x_pos + np.random.uniform(-0.01, 0.01, len(x_pos)))
             artist.set_ydata(y_pos + np.random.uniform(-0.01, 0.01, len(y_pos)))
 
-    # Get the x-tick positions for each haplotype to dynamically place lines
-    xticks = ax.get_xticks()
-    unique_haplotypes = subset_data[haplotype_column_name].unique()
-
-    # Map each x-tick to the haplotype so we can align the lines
-    for i, haplotype in enumerate(unique_haplotypes):
-        # Get the actual abundance value for this haplotype
-        actual_abundance = subset_data.loc[subset_data[haplotype_column_name] == haplotype, actual_abundance_column_name].iloc[0]
-
-        # Get the x-position for this haplotype
-        x_position = xticks[i]
-
-        # Draw a dotted line across the length of the x-tick for each haplotype
+    # Draw a single red dotted line per unique actual abundance
+    for abundance, x_position in x_positions.items():
         ax.hlines(
-            y=actual_abundance,
-            xmin=x_position - 0.4,  # Adjust this value to control span within box plot dodge
-            xmax=x_position + 0.4,  # Adjust this value to control span within box plot dodge
+            y=abundance,
+            xmin=x_position - 0.4,
+            xmax=x_position + 0.4,
             colors='red',
             linestyles='dotted',
             linewidth=3
         )
+
+    # Set x-tick labels to the list of haplotype ranges or indices
+    ax.set_xticks(list(x_positions.values()))
+    ax.set_xticklabels(x_labels)
 
     # Add titles and labels
     plt.xlabel('Haplotypes')

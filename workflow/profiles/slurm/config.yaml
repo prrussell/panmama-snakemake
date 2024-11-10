@@ -1,5 +1,6 @@
 executor: slurm  # Specifies SLURM as the job scheduler for running Snakemake workflows
 use-conda: True  # Enables the use of conda environments for reproducibility and dependency management
+keep-going: True # Attempt all jobs, even if some fail with errors
 jobs: 50  # Allows up to 50 jobs to be submitted at any given time to manage cluster load and resource allocation efficiently
 latency-wait: 30  # Waits 30 seconds for output files to account for potential latency issues, ensuring all files are properly written before the next step
 retries: 2  # Retries failed jobs up to 2 times to handle transient errors without manual intervention
@@ -17,7 +18,7 @@ set-resources:
     create_fasta:
         mem_mb: attempt * 500000
         slurm_partition: "medium"
-        runtime: 60
+        runtime: 180
     run_panmap:
         mem_mb: attempt * 500000
         slurm_partition: "medium"
