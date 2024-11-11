@@ -18,8 +18,8 @@ set-resources:
     create_fasta:
         mem_mb: attempt * 500000
         slurm_partition: "medium"
-        runtime: 180
+        runtime: attempt * 180
     run_panmap:
         mem_mb: attempt * 500000
         slurm_partition: "medium"
-        runtime: 60
+        runtime: attempt * 60
