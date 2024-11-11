@@ -62,7 +62,6 @@ def generate_panmap_param_wildcards(config):
     return wildcard_map
 
 panmap_params_wildcards = generate_panmap_param_wildcards(config)
-print(panmap_params_wildcards)
 
 # Calculate n_reads given a sequencing depth (in silico seq only)
 def get_n_reads(config, tree, config_n_reads):
@@ -119,7 +118,7 @@ rule all:
         num_sequences=abundance_wildcards.keys(),
         i=reps),
 
-        expand("panmap_outputs/{panmap_params}_panman/{tree_name}.panman",
+        expand("panmap_outputs/{panmap_params}_index/{tree_name}.panman",
         panmap_params=panmap_params_wildcards.keys(),
         tree_name=config['tree']),
 
@@ -260,13 +259,13 @@ rule copy_panman:
     input:
         f"{resources_path}/panmans/{{tree_name}}.panman"
     output:
-        "panmap_outputs/{panmap_params}_panman/{tree_name}.panman"
+        "panmap_outputs/{panmap_params}_index/{tree_name}.panman"
     shell:
         "cp {input[0]} {output[0]}"
 
 rule run_panmap:
     input:
-        "panmap_outputs/{panmap_params}_panman/{tree_name}.panman",
+        "panmap_outputs/{panmap_params}_index/{tree_name}.panman",
         "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
         "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
     output:
