@@ -28,9 +28,8 @@ swampy_params:
   # Select sars ARTIC or Nimagen primer set (a1, a4, a5, n2)
   primer_set: "a5"  # String
 
-panmap_params:  # Integer or list of integers for all panmap parameters
-  len_k_mer: [10, 15]
-  len_s_mer: 5
+panmap_params:  # Integer or list of integers for all panmap parameters except len_k_s_mers
+  len_k_s_mers: 10 5 # Two numbers, len k and len s, separated by a space. Or a list of two numbers separated by a space. 
   check_frequency: 5
   redo_read_threshold: 0
   remove_iteration: 5

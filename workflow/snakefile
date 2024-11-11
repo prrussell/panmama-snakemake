@@ -46,19 +46,23 @@ abundance_wildcards = map_abundance_wildcards(config["abundances"])
 
 # Map combinations of panmap parameters to simplified wildcards for filenames
 def generate_panmap_param_wildcards(config):
-    # Extract and expand lists from config file, mapping each key to values.
+    # Extract and expand lists from config file, treating `len_k_s_mers` tuples as single items
     param_keys = list(config['panmap_params'].keys())
-    param_values = [config['panmap_params'][key] if isinstance(config['panmap_params'][key], list) else [config['panmap_params'][key]] for key in param_keys]
-    
-    # Generate all combinations of the panmap_params.
+    param_values = [
+        config['panmap_params'][key] if isinstance(config['panmap_params'][key], list) else [config['panmap_params'][key]]
+        for key in param_keys
+    ]
+
+    # Generate all combinations of the panmap_params
     param_combinations = list(product(*param_values))
-    
+
     # Map each combination to a unique wildcard name
     wildcard_map = {f"panmap{i+1}": dict(zip(param_keys, combination)) for i, combination in enumerate(param_combinations)}
     
     return wildcard_map
 
 panmap_params_wildcards = generate_panmap_param_wildcards(config)
+print(panmap_params_wildcards)
 
 # Calculate n_reads given a sequencing depth (in silico seq only)
 def get_n_reads(config, tree, config_n_reads):
@@ -268,7 +272,9 @@ rule run_panmap:
     output:
         "panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv",
     params:
-        panmap_config = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params]
+        panmap_config = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params],
+        len_k_mer = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params]['len_k_s_mers'].split()[0],
+        len_s_mer = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params]['len_k_s_mers'].split()[1]
     shell:
         """
         {config[panmap_path]} \
@@ -276,8 +282,8 @@ rule run_panmap:
         {input[1]} \
         {input[2]} \
         -p ./panmap_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i} \
-        -k {params.panmap_config[len_k_mer]} \
-        -s {params.panmap_config[len_s_mer]} \
+        -k {params.len_k_mer} \
+        -s {params.len_s_mer} \
         --place-per-read \
         --check-frequency {params.panmap_config[check_frequency]} \
         --redo-read-threshold {params.panmap_config[redo_read_threshold]} \
