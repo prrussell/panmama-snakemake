@@ -160,6 +160,17 @@ rule create_fasta:
         mv info/{wildcards.tree_name}_0.fasta {output}
         """
 
+rule create_newick:
+    input:
+        f"{resources_path}/panmans/{{tree_name}}.panman"
+    output:
+        f"{resources_path}/newick/{{tree_name}}.tree"
+    shell:
+        """
+        echo "Creating newick tree from panman..."
+        {config[panmanUtils_path]} -I {input} --newick | tail -n +2 > {output}
+        """
+
 # Calculate genome size for depth <-> reads conversions
 rule sequence_length:
     input:
@@ -304,11 +315,16 @@ rule tabular_summary:
         expand("panman_outputs/{tree_name}_{num_sequences}_abundance_{i}.tsv", 
         tree_name=config['tree'], 
         num_sequences=abundance_wildcards.keys(),
-        i=reps)
+        i=reps),
+        
+        expand(f"{resources_path}/newick/{{tree_name}}.tree",
+        tree_name=config['tree'])
     output:
         "results/actual_abundance.tsv",
         "results/estimated_abundance.tsv",
         "results/results_summary.tsv",
         "results/results_boxplot.tsv"
+    conda:
+        "envs/ete3.yaml"
     script:
         "scripts/summarize_output.py"

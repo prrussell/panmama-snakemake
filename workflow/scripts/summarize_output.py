@@ -1,8 +1,10 @@
 import pandas as pd
 import re
+from compute_distance import newick_distances
 
 # List of input/output files passed by Snakemake
 input_files = snakemake.input
+input_newick = input_files[-1]
 actual_abundance_file = snakemake.output[0]
 estimated_abundance_file = snakemake.output[1]
 joined_output_file = snakemake.output[2]
@@ -120,6 +122,8 @@ merged_df["Num_Haplotypes_est"] = merged_df.groupby(
 # Fill nulls in Abundance_est column
 merged_df["Abundance_est"] = merged_df["Abundance_est"].fillna(0)
 merged_df['Haplotype_Index'] = merged_df['Haplotype_Index'].astype('Int64')
+
+merged_df = newick_distances(merged_df, input_newick)
 
 # Save the combined summary DataFrame to the output file
 merged_df.to_csv(joined_output_file, sep='\t', index=False)
