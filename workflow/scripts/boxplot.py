@@ -14,17 +14,24 @@ args = parser.parse_args()
 # Load your data
 data = pd.read_csv(args.input_file_path, sep='\t')
 
-# Define the column names for flexibility
+# Define the column names for flexibility (can be single string or list of strings)
 haplotype_column_name = 'Haplotype_Index'
 actual_abundance_column_name = 'Abundance_actual'
 estimated_abundance_column_name = 'Abundance_est'
-grouping_column_name = 'Reads_or_Depth'  # Flexible column, change grouping as needed
-loop_column_name = 'Num_Haplotypes_Param'  # Hardcoded column to loop through for separate plots
+grouping_column_name = ['Reads_or_Depth']  # List of columns to group for boxplots. Determines number of different colored boxplots and legend values.
+loop_column_name = ['Num_Haplotypes_Param', 'Tree']  # List of columns to loop through to create different plots. Determines number of plots outputted.
 
-# Check that these columns exist in your DataFrame
-required_columns = [haplotype_column_name, actual_abundance_column_name, estimated_abundance_column_name, grouping_column_name, loop_column_name]
-for col in required_columns:
-    assert col in data.columns, f"{col} not found in data columns."
+# Helper function to handle single vs multiple columns
+def get_combined_column(df, columns):
+    if isinstance(columns, list):
+        combined = df[columns].astype(str).agg('_'.join, axis=1)
+    else:
+        combined = df[columns]
+    return combined
+
+# Create combined columns if needed
+data['combined_group'] = get_combined_column(data, grouping_column_name)
+data['combined_loop'] = get_combined_column(data, loop_column_name)
 
 # Ensure output directory exists
 os.makedirs(args.output_directory, exist_ok=True)
@@ -32,16 +39,13 @@ os.makedirs(args.output_directory, exist_ok=True)
 # Helper function to sort haplotype indices with "other" last
 def custom_sort_key(value):
     try:
-        # Try to convert to integer if possible
         return (0, int(value))
     except ValueError:
-        # Place "other" after numeric values
         return (1, value)
 
-# Loop through each unique value in the specified loop column
-for group_value in data[loop_column_name].unique():
-    # Filter the data for the current group
-    subset_data = data[data[loop_column_name] == group_value]
+# Loop through each unique value in the combined loop column
+for group_value in data['combined_loop'].unique():
+    subset_data = data[data['combined_loop'] == group_value]
 
     # Group data by actual abundance, sorting by abundance in descending order
     grouped_data = subset_data.groupby(actual_abundance_column_name, sort=False)
@@ -72,7 +76,7 @@ for group_value in data[loop_column_name].unique():
     ax = sns.boxplot(
         x=plot_data["x_position"],
         y=plot_data[estimated_abundance_column_name],
-        hue=plot_data[grouping_column_name],
+        hue=plot_data["combined_group"],
         palette='Pastel1',
         dodge=True
     )
@@ -105,7 +109,7 @@ for group_value in data[loop_column_name].unique():
     plt.xlabel('Haplotypes')
     plt.ylabel('Abundance')
     plt.title(f'Estimated vs Actual Abundance by Haplotype (Group: {group_value})')
-    plt.legend(title=grouping_column_name)
+    plt.legend(title=" & ".join(grouping_column_name) if isinstance(grouping_column_name, list) else grouping_column_name)
 
     # Save each plot with a unique filename in the specified output directory
     output_path = os.path.join(args.output_directory, f"boxplot_{group_value}.png")

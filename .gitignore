@@ -7,3 +7,4 @@ plots/
 workflow/envs/conda/
 
 *.png
+*pycache*
