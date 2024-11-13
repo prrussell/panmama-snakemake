@@ -4,7 +4,10 @@ from compute_distance import newick_distances
 
 # List of input/output files passed by Snakemake
 input_files = snakemake.input
-input_newick = input_files[-1]
+input_newick_files = {
+    re.match(r"([^/]+)\.tree$", file.split("/")[-1]).group(1): file
+    for file in input_files if file.endswith(".tree")
+}
 actual_abundance_file = snakemake.output[0]
 estimated_abundance_file = snakemake.output[1]
 joined_output_file = snakemake.output[2]
@@ -123,7 +126,26 @@ merged_df["Num_Haplotypes_est"] = merged_df.groupby(
 merged_df["Abundance_est"] = merged_df["Abundance_est"].fillna(0)
 merged_df['Haplotype_Index'] = merged_df['Haplotype_Index'].astype('Int64')
 
-merged_df = newick_distances(merged_df, input_newick)
+# Use newick files to calculate distance 
+# Initialize a list to store processed DataFrames for each tree
+tree_dfs = []
+
+# Loop over each unique tree in merged_df
+for tree in merged_df["Tree"].unique():
+    # Extract the subset of merged_df for the current tree
+    tree_df = merged_df[merged_df["Tree"] == tree].copy()
+    
+    # Get the corresponding Newick file for the current tree
+    tree_newick_file = input_newick_files.get(tree)
+    if tree_newick_file:
+        # Apply the newick_distances function to this subset
+        tree_df = newick_distances(tree_df, tree_newick_file)
+    
+    # Append the processed DataFrame to the list
+    tree_dfs.append(tree_df)
+
+# Concatenate all the processed DataFrames back into one DataFrame
+merged_df = pd.concat(tree_dfs, ignore_index=True)
 
 # Save the combined summary DataFrame to the output file
 merged_df.to_csv(joined_output_file, sep='\t', index=False)
