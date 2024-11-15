@@ -96,12 +96,12 @@ def get_n_reads(config, tree, config_n_reads):
 
 # Existing panmans available online
 urls = {
-    "ecoli": "https://zenodo.org/records/12630607/files/ecoli_1000.panman", 
-    "hiv": "https://zenodo.org/records/12630607/files/HIV_20000.panman",
-    "klebs": "https://zenodo.org/records/12630607/files/klebs_1000.panman",
-    "rsv": "https://zenodo.org/records/12630607/files/rsv_4000.panman",
-    "sars": "https://zenodo.org/records/12630607/files/sars_20000.panman",
-    "tb": "https://zenodo.org/records/12630607/files/tb_400.panman"}
+    "ecoli1000": "https://zenodo.org/records/12630607/files/ecoli_1000.panman", 
+    "hiv20000": "https://zenodo.org/records/12630607/files/HIV_20000.panman",
+    "klebs1000": "https://zenodo.org/records/12630607/files/klebs_1000.panman",
+    "rsv4000": "https://zenodo.org/records/12630607/files/rsv_4000.panman",
+    "sars20000": "https://zenodo.org/records/12630607/files/sars_20000.panman",
+    "tb400": "https://zenodo.org/records/12630607/files/tb_400.panman"}
 
 rule all:
     input:
