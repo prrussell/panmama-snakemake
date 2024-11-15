@@ -2,24 +2,28 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import argparse
-import os
-
-# Set up argparse to take input and output file paths as command-line arguments
-parser = argparse.ArgumentParser(description="Plot estimated vs actual abundance by grouped haplotypes.")
-parser.add_argument('input_file_path', type=str, help='Path to the input TSV file')
-parser.add_argument('output_directory', type=str, help='Directory to save the output plots')
-args = parser.parse_args()
 
 # Load your data
-data = pd.read_csv(args.input_file_path, sep='\t')
+data = pd.read_csv(snakemake.input[0], sep='\t')
+
+# Save textfile (so Snakemake initiates rule)
+text_to_save = "Creating boxplots."
+
+# Specify the filename and path
+file_path = snakemake.output[0]
+
+# Open the file in write mode and save the text
+with open(file_path, 'w') as file:
+    file.write(text_to_save)
 
 # Define the column names for flexibility (can be single string or list of strings)
+parameter_columns = ['Tree', 'Read_Simulator', 'Reads_or_Depth', 'Panmap_Params', 'Num_Haplotypes_Param']
 haplotype_column_name = 'Haplotype_Index'
 actual_abundance_column_name = 'Abundance_actual'
 estimated_abundance_column_name = 'Abundance_est'
 grouping_column_name = ['Reads_or_Depth']  # List of columns to group for boxplots. Determines number of different colored boxplots and legend values.
-loop_column_name = ['Num_Haplotypes_Param', 'Tree']  # List of columns to loop through to create different plots. Determines number of plots outputted.
+# Create separate plots for any parameter variables not captured in grouping column
+loop_column_name = sorted(list(set(parameter_columns) - set(grouping_column_name)))
 
 # Helper function to handle single vs multiple columns
 def get_combined_column(df, columns):
@@ -32,9 +36,6 @@ def get_combined_column(df, columns):
 # Create combined columns if needed
 data['combined_group'] = get_combined_column(data, grouping_column_name)
 data['combined_loop'] = get_combined_column(data, loop_column_name)
-
-# Ensure output directory exists
-os.makedirs(args.output_directory, exist_ok=True)
 
 # Helper function to sort haplotype indices with "other" last
 def custom_sort_key(value):
@@ -108,11 +109,15 @@ for group_value in data['combined_loop'].unique():
     # Add titles and labels
     plt.xlabel('Haplotypes')
     plt.ylabel('Abundance')
-    plt.title(f'Estimated vs Actual Abundance by Haplotype (Group: {group_value})')
+    # Get the parameter values for the current group
+    loop_values = [subset_data[col].iloc[0] for col in loop_column_name]
+    title_details = " - ".join([f"{col}: {val}" for col, val in zip(loop_column_name, loop_values)])
+    plt.title(f"Estimated vs Actual Abundance by Haplotype\n{title_details}")
     plt.legend(title=" & ".join(grouping_column_name) if isinstance(grouping_column_name, list) else grouping_column_name)
 
     # Save each plot with a unique filename in the specified output directory
-    output_path = os.path.join(args.output_directory, f"boxplot_{group_value}.png")
+    path_details = "_".join(str(val) for val in loop_values)
+    output_path = f"plots/boxplots/boxplot_{path_details}.png"
     plt.tight_layout()
     plt.savefig(output_path, format='png', dpi=300)
     plt.close()  # Close the plot to avoid display overlap

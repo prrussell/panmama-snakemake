@@ -126,7 +126,9 @@ rule all:
         "results/actual_abundance.tsv",
         "results/estimated_abundance.tsv",
         "results/results_summary.tsv",
-        "results/results_boxplot.tsv"
+        "results/results_boxplot.tsv",
+        "plots/boxplots/boxplot.txt",
+        "plots/histograms/histogram.txt"
 
 rule log_wildcard_mapping:
     output:
@@ -328,3 +330,23 @@ rule tabular_summary:
         "envs/ete3.yaml"
     script:
         "scripts/summarize_output.py"
+
+rule boxplot:
+    input:
+        "results/results_boxplot.tsv"
+    output:
+        "plots/boxplots/boxplot.txt"
+    conda:
+        "envs/plots.yaml"
+    script:
+        "scripts/boxplot.py"
+
+rule histogram:
+    input:
+        "results/results_summary.tsv"
+    output:
+        "plots/histograms/histogram.txt"
+    conda:
+        "envs/plots.yaml"
+    script:
+        "scripts/histogram.py"
