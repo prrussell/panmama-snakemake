@@ -105,7 +105,7 @@ urls = {
 
 rule all:
     input:
-        expand("panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv", 
+        expand("panmap_outputs/{i}/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv", 
         tree_name=config['tree'], 
         num_sequences=abundance_wildcards.keys(),
         simulator=config['simulator'],
@@ -113,7 +113,7 @@ rule all:
         panmap_params=panmap_params_wildcards.keys(),
         i=reps),
 
-        expand("panman_outputs/{tree_name}_{num_sequences}_abundance_{i}.tsv", 
+        expand("panman_outputs/{i}/{tree_name}_{num_sequences}_abundance_{i}.tsv", 
         tree_name=config['tree'], 
         num_sequences=abundance_wildcards.keys(),
         i=reps),
@@ -189,8 +189,8 @@ rule select_sequences:
         f"{resources_path}/fasta_all/{{tree_name}}_all.fasta",
         f"{resources_path}/fasta_all/{{tree_name}}_length.txt"
     output: 
-        "panman_outputs/{tree_name}_{num_sequences}_{i}.fasta",
-        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta"
+        "panman_outputs/{i}/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{i}/{tree_name}_{num_sequences}_{i}.fasta"
     conda:
         "envs/bio.yaml"
     params:
@@ -200,11 +200,11 @@ rule select_sequences:
 
 rule create_abundance_tsv:
     input:
-        "panman_outputs/{tree_name}_{num_sequences}_{i}.fasta",
-        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta"
+        "panman_outputs/{i}/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{i}/{tree_name}_{num_sequences}_{i}.fasta"
     output:
-        "panman_outputs/{tree_name}_{num_sequences}_abundance_{i}.tsv",
-        "simulation_inputs/{tree_name}_{num_sequences}_abundance_{i}.tsv",
+        "panman_outputs/{i}/{tree_name}_{num_sequences}_abundance_{i}.tsv",
+        "simulation_inputs/{i}/{tree_name}_{num_sequences}_abundance_{i}.tsv",
     conda:
         "envs/bio.yaml"
     params:
@@ -216,11 +216,11 @@ rule create_abundance_tsv:
 
 rule simulate_swampy:
     input:
-        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta",
-        "simulation_inputs/{tree_name}_{num_sequences}_abundance_{i}.tsv"
+        "simulation_inputs/{i}/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{i}/{tree_name}_{num_sequences}_abundance_{i}.tsv"
     output:
-        "swampy_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
-        "swampy_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
+        "swampy_outputs/{i}/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
+        "swampy_outputs/{i}/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
     conda:
         "envs/SWAMPy.yaml"
     shell:
@@ -229,19 +229,19 @@ rule simulate_swampy:
         --primer_set {config[swampy_params][primer_set]} \
         --genomes_file {input[0]} \
         --genome_abundances {input[1]} \
-        --output_folder ./swampy_outputs/ \
+        --output_folder ./swampy_outputs/{wildcards.i}/ \
         --output_filename_prefix {wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i} \
         --n_reads {config[n_reads]} \
-        --temp_folder ./swampy_outputs/temp_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i}/ --autoremove
+        --temp_folder ./swampy_outputs/{wildcards.i}/temp_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i}/ --autoremove
         """
 
 rule simulate_insilicoseq:
     input:
-        "simulation_inputs/{tree_name}_{num_sequences}_{i}.fasta",
-        "simulation_inputs/{tree_name}_{num_sequences}_abundance_{i}.tsv"
+        "simulation_inputs/{i}/{tree_name}_{num_sequences}_{i}.fasta",
+        "simulation_inputs/{i}/{tree_name}_{num_sequences}_abundance_{i}.tsv"
     output:
-        "iss_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
-        "iss_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
+        "iss_outputs/{i}/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
+        "iss_outputs/{i}/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
     conda:
         "envs/iss.yaml"
     params:
@@ -253,7 +253,7 @@ rule simulate_insilicoseq:
         --model {config[iss_params][model]} \
         --n_reads {params.n_reads} \
         --cpus {config[iss_params][cpus]} \
-        --output ./iss_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i}
+        --output ./iss_outputs/{wildcards.i}/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.n_reads}_{wildcards.i}
         mkdir -p results
         touch results/parameter.log
         log_title="Number of Reads vs Depth:"
@@ -279,10 +279,10 @@ rule copy_panman:
 rule run_panmap:
     input:
         "panmap_outputs/{panmap_params}_index/{tree_name}.panman",
-        "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
-        "{simulator}_outputs/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
+        "{simulator}_outputs/{i}/{tree_name}_{num_sequences}_{n_reads}_{i}_R1.fastq",
+        "{simulator}_outputs/{i}/{tree_name}_{num_sequences}_{n_reads}_{i}_R2.fastq"
     output:
-        "panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv",
+        "panmap_outputs/{i}/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv",
     params:
         panmap_config = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params],
         len_k_mer = lambda wildcards: panmap_params_wildcards[wildcards.panmap_params]['len_k_s_mers'].split()[0],
@@ -293,7 +293,7 @@ rule run_panmap:
         {input[0]} \
         {input[1]} \
         {input[2]} \
-        -p ./panmap_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i} \
+        -p ./panmap_outputs/{wildcards.i}/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i} \
         -k {params.len_k_mer} \
         -s {params.len_s_mer} \
         --place-per-read \
@@ -301,12 +301,12 @@ rule run_panmap:
         --redo-read-threshold {params.panmap_config[redo_read_threshold]} \
         --remove-iteration {params.panmap_config[remove_iteration]} \
         --cpus {params.panmap_config[cpus]}
-        mv ./panmap_outputs/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i}.abundance {output[0]}
+        mv ./panmap_outputs/{wildcards.i}/{wildcards.tree_name}_{wildcards.num_sequences}_{wildcards.simulator}_{wildcards.n_reads}_{wildcards.panmap_params}_{wildcards.i}.abundance {output[0]}
         """
 
 rule tabular_summary:
     input:
-        expand("panmap_outputs/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv", 
+        expand("panmap_outputs/{i}/{tree_name}_{num_sequences}_{simulator}_{n_reads}_{panmap_params}_abundance_{i}.tsv", 
         tree_name=config['tree'], 
         num_sequences=abundance_wildcards.keys(),
         simulator=config['simulator'],
@@ -314,7 +314,7 @@ rule tabular_summary:
         panmap_params=panmap_params_wildcards.keys(),
         i=reps),
 
-        expand("panman_outputs/{tree_name}_{num_sequences}_abundance_{i}.tsv", 
+        expand("panman_outputs/{i}/{tree_name}_{num_sequences}_abundance_{i}.tsv", 
         tree_name=config['tree'], 
         num_sequences=abundance_wildcards.keys(),
         i=reps),

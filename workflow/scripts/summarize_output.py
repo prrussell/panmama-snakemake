@@ -22,10 +22,10 @@ panman_data_frames = []
 
 # Updated regular expressions for parsing filenames
 panmap_pattern = re.compile(
-    r"panmap_outputs/(?P<tree>[^_]+)_(?P<num_hap>\d+hap-[a-z])_(?P<simulator>[^_]+)_(?P<depth>\d+)_panmap(?P<param>\d+)_abundance_rep(?P<replicate>\d+)\.tsv"
+    r"panmap_outputs/rep\d+/(?P<tree>[^_]+)_(?P<num_hap>\d+hap-[a-z])_(?P<simulator>[^_]+)_(?P<depth>\d+)_panmap(?P<param>\d+)_abundance_rep(?P<replicate>\d+)\.tsv"
 )
 panman_pattern = re.compile(
-    r"panman_outputs/(?P<tree>[^_]+)_(?P<num_hap>\d+hap-[a-z])_abundance_rep(?P<replicate>\d+)\.tsv"
+    r"panman_outputs/rep\d+/(?P<tree>[^_]+)_(?P<num_hap>\d+hap-[a-z])_abundance_rep(?P<replicate>\d+)\.tsv"
 )
 
 # Separate and load files based on their prefixes
