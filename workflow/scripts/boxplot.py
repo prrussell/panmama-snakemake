@@ -107,13 +107,17 @@ for group_value in data['combined_loop'].unique():
     ax.set_xticklabels(x_labels)
 
     # Add titles and labels
-    plt.xlabel('Haplotypes')
-    plt.ylabel('Abundance')
+    plt.xlabel('Haplotypes', fontsize=14)
+    plt.ylabel('Abundance', fontsize = 14)
+    plt.xticks(fontsize=12) 
+    plt.yticks(fontsize=12) 
     # Get the parameter values for the current group
     loop_values = [subset_data[col].iloc[0] for col in loop_column_name]
     title_details = " - ".join([f"{col}: {val}" for col, val in zip(loop_column_name, loop_values)])
-    plt.title(f"Estimated vs Actual Abundance by Haplotype\n{title_details}")
-    plt.legend(title=" & ".join(grouping_column_name) if isinstance(grouping_column_name, list) else grouping_column_name)
+    plt.title(f"Estimated vs Actual Abundance by Haplotype\n{title_details}", fontsize = 14)
+    plt.legend(title=" & ".join(grouping_column_name) if isinstance(grouping_column_name, list) else grouping_column_name,
+               fontsize = 12,
+               title_fontsize = 14)
 
     # Save each plot with a unique filename in the specified output directory
     path_details = "_".join(str(val) for val in loop_values)
