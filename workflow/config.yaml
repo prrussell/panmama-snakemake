@@ -1,14 +1,14 @@
-panmanUtils_path: "~/installs/panmap/build/bin/panmanUtils"
-panmap_path: "~/installs/panmap/build/bin/panmap"
-swampy_path: "~/installs/SWAMPy/src/simulate_metagenome.py"
+panmanUtils_path: "/private/groups/corbettlab/petria/installs/panmap/build/bin/panmanUtils"
+panmap_path: "/private/groups/corbettlab/petria/installs/panmap/build/bin/panmap"
+swampy_path: "/private/groups/corbettlab/petria/installs/SWAMPy/src/simulate_metagenome.py"
 
 # Number of replicates (i.e., random selection of sequences) for each condition
 n_replicates: 2   # Integer
 
 # Specify existing panman
-# Use published panman: sars, ecoli, hiv, tb, rsv, or klebs)
+# Use published panman: sars20000, ecoli1000, hiv20000, tb400, rsv4000, or klebs1000)
 # Or use file prefix for any panman saved in resources folder in pipeline directory
-tree: "rsv"   # String or list of strings
+tree: "rsv4000"   # String or list of strings
 
 # Haplotype relative abundance (list; must sum to 1)
 abundances:
